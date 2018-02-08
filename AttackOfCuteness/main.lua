@@ -19,6 +19,9 @@ local score = 0
 local hitPlanet
 local planetDamage
 local planet
+local speedBump = 0 
+local text2
+local text3
 
 -- preload audio
 --loadstream for background sounds
@@ -32,17 +35,23 @@ local sndend = audio.loadSound("ending.mp3")
 -- game functions
 
 function spawnEnemy()
-	local enemy = display.newImage("beetleship.png")
+	local enemypics = {"beetleship.png","octopus.png", "rocketship.png"}
+	local enemy = display.newImage(enemypics[math.random(#enemypics)])
+	
+	-- local enemy = display.newImage("beetleship.png")
 	--enemy.x = math.random(20, display.contentWidth-20)
 	--enemy.y = math.random(20, display.contentHeight-20)
 	if math.random(2) == 1 then
 		enemy.x = math.random(-100,-10)
 	else
 		enemy.x = math.random (display.contentWidth + 10, display.contentWidth + 100)
+		enemy.xScale = -1
 	end	
 	enemy.y = math.random(display.contentHeight)
-	enemy.trans = transition.to (enemy, { x=centerX, y=centerY, time=3500, onComplete=hitPlanet})
+	enemy.trans = transition.to(enemy, { x=centerX, y=centerY, time=math.random(2500-speedBump, 4500-speedBump), onComplete=hitPlanet} )
+	--enemy.trans = transition.to (enemy, { x=centerX, y=centerY, time=3500, onComplete=hitPlanet})
 	enemy:addEventListener ("tap", shipSmash)
+	speedBump = speedBump + 50
 end
 
 
@@ -51,7 +60,7 @@ function startGame()
 	local text = display.newText("Tap here to start. Protect the planet!",0,0,"Helvetica",16)
 	text.x = centerX
 	text.y = display.contentHeight - 50
-	text:setTextColor(0,0,0)
+	text:setFillColor(0,0,0)
 	local function goAway(event)
 		display.remove(event.target)
 		text = nil
@@ -61,20 +70,43 @@ function startGame()
 		scoreTxt = display.newText("Score: 0",0,0,"Helvetica",16)
 		scoreTxt.x = centerX
 		scoreTxt.y = display.screenOriginY + 10
-		scoreTxt:setTextColor(0,0,0)
+		scoreTxt:setFillColor(0,0,0)
 		score = 0
+		planet.numHits = 10
+		speedBump = 0
+		planet.alpha = 1
+		display.remove(text2)
+		display.remove(text3)
 	end
 	text:addEventListener ("tap",goAway)
 end
 
 
 function planetDamage()
-	local function goAway(obj)
-		planet.xScale =1
-		planet.yScale = 1
-		--planet.alpha = planet.numHits /10
+	planet.numHits = planet.numHits - 2
+	planet.alpha = planet.numHits / 10
+	if planet.numHits < 2 then
+			planet.alpha = 0
+			text2 = display.newText("Planet is Toast YOU Lose.",0,0,"Helvetica",16) 
+			text2.x = centerX
+			text2.y = centerY
+			text2:setFillColor(0,0,0)
+			text3 = display.newText("Your score: ",0,0,"Helvetica",16)
+			text3.x = centerX
+			text3.y = centerY +30
+			text3:setFillColor(0,0,0)
+			text3.text = "Your Score Was: " .. score
+			display.remove(scoreTxt)
+			timer.performWithDelay (1000, startGame)
+			audio.play(sndend)
+	else
+			local function goAway(obj)
+				planet.xScale =1
+				planet.yScale = 1
+				planet.alpha = planet.numHits / 10
+			end	
+			transition.to (planet, {time=200, xScale=1.2, yScale=1.2, alpha=1, onComplete=goAway})		
 	end
-	transition.to (planet, {time=200, xScale=1.2, yScale=1.2, alpha=1, onComplete=goAway})
 end
 
 
@@ -83,7 +115,9 @@ function hitPlanet(obj)
 	display.remove(obj)
 	planetDamage()
 	audio.play(sndBlast)
-	spawnEnemy()
+	if planet.numHits > 1 then
+			spawnEnemy()
+	end
 end
 
 
